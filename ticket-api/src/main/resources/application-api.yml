@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: ticket-api
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.ticketing.ticketapi: INFO
+    org.springframework.web: INFO
+    
+app:
+  api:
+    cors:
+      allowed-origins: "*"
+    rate-limit:
+      enabled: true
+      requests-per-minute: 1000

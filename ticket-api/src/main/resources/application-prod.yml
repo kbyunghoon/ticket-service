@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:redis-cluster}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+app:
+  api:
+    rate-limit:
+      enabled: true
+
+logging:
+  level:
+    root: WARN
+    com.ticketing: INFO
+  file:
+    name: logs/ticket-api.log

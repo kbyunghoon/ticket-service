@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+app:
+  api:
+    rate-limit:
+      enabled: false
+    cors:
+      allowed-origins: "http://localhost:3000,http://localhost:8080"
+
+logging:
+  level:
+    com.ticketing: DEBUG
+    org.springframework.web: DEBUG

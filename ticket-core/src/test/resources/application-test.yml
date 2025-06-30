@@ -1,0 +1,46 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 1000ms
+
+redisson:
+  address: "redis://localhost:6379"
+  database: 1
+  timeout: 1000
+
+app:
+  queue:
+    max-queue-size: 100
+    admission-batch-size: 5
+    admission-interval-seconds: 1
+    lock:
+      wait-time-seconds: 5
+      lease-time-seconds: 10
+
+  redis:
+    queue-key: "test:waiting:queue"
+    user-session-prefix: "test:user:session:"
+    ttl-seconds: 60
+
+logging:
+  level:
+    com.ticketing.ticketcore: DEBUG
+    org.springframework.data.redis: DEBUG
+    org.redisson: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
