@@ -30,7 +30,7 @@ class QueueApiService(
         val queueSize = getQueueSize()
 
         val message = if (rank != null) {
-            "대기열 ${rank}위 입니다."
+            "대기열 ${rank}위입니다."
         } else {
             "사용자가 대기열에 존재하지 않음"
         }
@@ -55,7 +55,7 @@ class QueueApiService(
     }
 
     fun getQueueSize(): QueueSizeResponse {
-        val response = QueueSizeResponse(coreQueueService.getQueueSize(), "Current queue size")
+        val response = QueueSizeResponse(coreQueueService.getQueueSize(), "현재 대기열 인원 수")
         return response
     }
 
