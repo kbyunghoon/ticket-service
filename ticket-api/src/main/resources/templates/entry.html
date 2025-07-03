@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>티켓팅 서비스 입장</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .entry-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .form-group {
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1.2em;
+            text-align: center;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #555;
+        }
+
+        .info-box ul li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+<div class="entry-container">
+    <h1 class="title">티켓팅 서비스</h1>
+    <p class="subtitle">티켓팅 입장 테스트</p>
+
+    <div th:if="${errorMessage}" class="error-message" th:text="${errorMessage}"></div>
+
+    <form th:action="@{/entry/join}" method="post">
+        <div class="form-group">
+            <label for="userId">사용자 ID (숫자):</label>
+            <input type="number"
+                   id="userId"
+                   name="userId"
+                   placeholder="예: 12345"
+                   min="1"
+                   max="999999999"
+                   required>
+        </div>
+
+        <button type="submit" class="btn">대기열 입장</button>
+    </form>
+
+    <div class="info-box">
+        <ul>
+            <li>고유한 사용자 ID 입력</li>
+            <li>과부하 활성화 시 대기열 입장</li>
+            <li>순서가 되면 자동으로 좌석 선택 페이지로 이동</li>
+        </ul>
+    </div>
+</div>
+</body>
+</html>

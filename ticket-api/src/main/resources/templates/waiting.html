@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>티켓팅 대기열 프로젝트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 62.5%;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .waiting-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .status-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            animation: pulse 2s infinite;
+        }
+
+        .title {
+            font-size: 2.2em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+
+            strong {
+                color: #4154FF;
+            }
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .user-id {
+            font-size: 1.5em;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .status-card h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .status-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .wait-goods-name {
+            margin-top: .8rem;
+            font-size: 1.7rem;
+            color: #666;
+        }
+
+        .queue-size {
+            color: #4ecdc4;
+        }
+
+        .loading {
+            color: #999;
+            font-style: italic;
+        }
+
+        .status-main-text {
+            h3 {
+                display: flex;
+                flex-direction: column;
+
+                strong {
+                    font-size: 5.6rem;
+                }
+            }
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 25px;
+            overflow: hidden;
+            height: 28px;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            background: #4154FF;
+            height: 100%;
+            border-radius: 25px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .update-time {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            color: #856404;
+        }
+
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 20px;
+            border-radius: 15px;
+            color: #155724;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .redirect-message {
+            font-size: 1.5em;
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 20px;
+            display: none;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+<div class="waiting-container">
+    <div class="wait-title">
+        <h2 class="title">접속 인원이 많아 대기 중입니다.<br><strong>조금만 기다려주세요.</strong></h2>
+    </div>
+    <div class="wait-goods-name">콘서트명</div>
+    <div class="status-box">
+        <div class="status-main">
+            <div class="status-main-text">
+                <h3>나의 대기<strong id="userRank"></strong></h3>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const userId = 0;
+    let updateInterval;
+    let redirectTimeout;
+    let initialRank = null;
+
+    function updateQueueStatus() {
+        fetch(`/entry/api/rank/${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                const rankElement = document.getElementById('userRank');
+                const progressBar = document.getElementById('progressBar');
+
+                if (data.isAdmitted) {
+                    rankElement.textContent = '입장 완료!';
+                    rankElement.style.color = '#28a745';
+
+                    progressBar.style.width = '100%';
+                    progressBar.style.background = '#28a745';
+
+                    clearInterval(updateInterval);
+
+                    redirectTimeout = setTimeout(() => {
+                        window.location.href = `/seat?userId=${userId}`;
+                    }, 1000);
+
+                } else if (data.rank !== null) {
+                    if (initialRank === null) {
+                        initialRank = data.rank;
+                    }
+
+                    rankElement.textContent = data.rank;
+
+                    if (initialRank && initialRank > 0) {
+                        const progress = Math.max(0, ((initialRank - data.rank) / initialRank) * 100);
+                        progressBar.style.width = progress + '%';
+                    } else {
+                        progressBar.style.width = '0%';
+                    }
+                } else {
+                    rankElement.textContent = '조회 중...';
+                    rankElement.style.color = '#999';
+                }
+            })
+            .catch(error => {
+                console.error('순위 조회 실패:', error);
+                const rankElement = document.getElementById('userRank');
+
+                rankElement.textContent = '연결 오류';
+                rankElement.style.color = '#dc3545';
+            });
+    }
+
+    updateQueueStatus();
+
+    updateInterval = setInterval(updateQueueStatus, 1000);
+
+    window.addEventListener('beforeunload', function () {
+        if (updateInterval) {
+            clearInterval(updateInterval);
+        }
+        if (redirectTimeout) {
+            clearTimeout(redirectTimeout);
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대기열 시스템 테스트</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .normal {
+            color: #28a745;
+        }
+
+        .warning {
+            color: #ffc107;
+        }
+
+        .danger {
+            color: #dc3545;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .control-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .control-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: black;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .message {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎫 대기열 시스템 테스트</h1>
+        <p>실시간 대기열 상태 모니터링 및 테스트</p>
+    </div>
+
+    <div th:if="${successMessage}" class="message success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="message error" th:text="${errorMessage}"></div>
+
+    <div class="status-grid">
+        <div class="status-card">
+            <h4>📊 처리 중인 요청</h4>
+            <div class="status-value" id="currentRequestCount"
+                 th:classappend="${currentRequestCount >= 100} ? 'danger' : (${currentRequestCount >= 50} ? 'warning' : 'normal')"
+                 th:text="${currentRequestCount}">0
+            </div>
+            <small>임계값: 10개 (테스트용)</small>
+        </div>
+
+        <div class="status-card">
+            <h4>🚨 과부하 상태</h4>
+            <div class="status-value" id="overloadStatus"
+                 th:classappend="${isOverloaded} ? 'danger' : 'normal'"
+                 th:text="${isOverloaded} ? '과부하' : '정상'">정상
+            </div>
+            <small id="overloadDetail" th:text="${isOverloaded} ? '대기열 활성화됨' : '직접 처리 중'">직접 처리 중</small>
+        </div>
+
+        <div class="status-card">
+            <h4>👥 대기열 크기</h4>
+            <div class="status-value" id="queueSize"
+                 th:classappend="${queueSize >= 1000} ? 'danger' : (${queueSize >= 100} ? 'warning' : 'normal')"
+                 th:text="${queueSize}">0
+            </div>
+            <small>대기 중인 사용자</small>
+        </div>
+    </div>
+
+    <div class="control-grid">
+        <div class="control-section">
+            <h3>🚪 대기열 입장</h3>
+            <form th:action="@{/queue-test/enter}" method="post">
+                <div class="form-group">
+                    <label for="enterUserId">사용자 ID</label>
+                    <input type="number" id="enterUserId" name="userId" required>
+                </div>
+                <button type="submit" class="btn btn-primary">대기열 입장</button>
+            </form>
+        </div>
+
+        <div class="control-section">
+            <h3>🔍 순위 조회</h3>
+            <form th:action="@{/queue-test/check-rank}" method="post">
+                <div class="form-group">
+                    <label for="checkUserId">사용자 ID</label>
+                    <input type="number" id="checkUserId" name="userId" required>
+                </div>
+                <button type="submit" class="btn btn-primary">순위 확인</button>
+            </form>
+        </div>
+
+        <div class="control-section">
+            <h3>✅ 사용자 입장 처리</h3>
+            <form th:action="@{/queue-test/admit}" method="post">
+                <div class="form-group">
+                    <label for="admitCount">입장시킬 사용자 수</label>
+                    <input type="number" id="admitCount" name="count" value="10" min="1" max="100" required>
+                </div>
+                <button type="submit" class="btn btn-success">입장 처리</button>
+            </form>
+        </div>
+
+        <div class="control-section">
+            <h3>📈 부하 시뮬레이션</h3>
+            <form th:action="@{/queue-test/simulate-load}" method="post">
+                <div class="form-group">
+                    <label for="loadCount">시뮬레이션 요청 수</label>
+                    <input type="number" id="loadCount" name="requestCount" value="50" min="1" max="200" required>
+                </div>
+                <button type="submit" class="btn btn-warning">부하 생성</button>
+            </form>
+        </div>
+
+        <div class="control-section">
+            <h3>⚡ 빠른 액션</h3>
+            <button type="button" class="btn btn-success" onclick="QueueTest.addMultipleUsers()">
+                10명 연속 입장
+            </button>
+            <button type="button" class="btn btn-danger" onclick="QueueTest.resetSystem()">
+                시스템 정상화
+            </button>
+            <button type="button" class="btn btn-primary" onclick="location.reload()">
+                새로고침
+            </button>
+        </div>
+
+        <div class="control-section">
+            <h3>📊 실시간 정보</h3>
+            <p>마지막 업데이트: <span id="lastUpdate"></span></p>
+            <p>자동 새로고침: <span id="autoRefreshStatus">활성화</span></p>
+            <button type="button" class="btn btn-primary" onclick="QueueTest.toggleAutoRefresh()">
+                자동 새로고침 ON/OFF
+            </button>
+            <button type="button" class="btn btn-primary" onclick="QueueTest.openApiStatus()">
+                API 상태 확인
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const QueueTest = {
+        ENDPOINTS: {
+            STATUS: '/queue-test/api/status',
+            ENTER: '/queue-test/enter',
+            RESET: '/queue-test/api/reset-counters'
+        },
+
+        THRESHOLDS: {
+            WARNING: {requests: 50, queue: 100},
+            DANGER: {requests: 100, queue: 1000}
+        },
+
+        autoRefreshInterval: null,
+        isAutoRefreshEnabled: true,
+
+        init() {
+            this.updateLastUpdateTime();
+            this.generateRandomUserId();
+            this.startAutoRefresh();
+            this.updateStatus();
+        },
+
+        async updateStatus() {
+            try {
+                const response = await fetch(this.ENDPOINTS.STATUS);
+                const data = await response.json();
+
+                this.updateRequestCount(data.currentRequestCount);
+                this.updateOverloadStatus(data);
+                this.updateQueueSize(data.queueSize);
+                this.updateLastUpdateTime();
+            } catch (error) {
+                console.error('상태 업데이트 실패:', error);
+            }
+        },
+
+        updateRequestCount(count) {
+            const element = document.getElementById('currentRequestCount');
+            element.textContent = count;
+            element.className = 'status-value ' + this.getStatusClass(count, this.THRESHOLDS.WARNING.requests, this.THRESHOLDS.DANGER.requests);
+        },
+
+        updateOverloadStatus(data) {
+            const element = document.getElementById('overloadStatus');
+            const isOverloaded = data.isOverloadedIncludingQueue || data.isOverloaded;
+
+            element.textContent = isOverloaded ? '과부하' : '정상';
+            element.className = 'status-value ' + (isOverloaded ? 'danger' : 'normal');
+
+            document.getElementById('overloadDetail').textContent =
+                isOverloaded ? '대기열 활성화됨' : '직접 처리 중';
+        },
+
+        updateQueueSize(size) {
+            const element = document.getElementById('queueSize');
+            element.textContent = size;
+            element.className = 'status-value ' + this.getStatusClass(size, this.THRESHOLDS.WARNING.queue, this.THRESHOLDS.DANGER.queue);
+        },
+
+        updateLastUpdateTime() {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        },
+
+        getStatusClass(value, warningThreshold, dangerThreshold) {
+            if (value >= dangerThreshold) return 'danger';
+            if (value >= warningThreshold) return 'warning';
+            return 'normal';
+        },
+
+        toggleAutoRefresh() {
+            if (this.isAutoRefreshEnabled) {
+                this.stopAutoRefresh();
+            } else {
+                this.startAutoRefresh();
+            }
+        },
+
+        startAutoRefresh() {
+            this.autoRefreshInterval = setInterval(() => this.updateStatus(), 1000);
+            this.isAutoRefreshEnabled = true;
+            this.updateAutoRefreshStatus('활성화', 'green');
+        },
+
+        stopAutoRefresh() {
+            if (this.autoRefreshInterval) {
+                clearInterval(this.autoRefreshInterval);
+                this.autoRefreshInterval = null;
+            }
+            this.isAutoRefreshEnabled = false;
+            this.updateAutoRefreshStatus('비활성화', 'red');
+        },
+
+        updateAutoRefreshStatus(text, color) {
+            const element = document.getElementById('autoRefreshStatus');
+            element.textContent = text;
+            element.style.color = color;
+        },
+
+        generateRandomUserId() {
+            const randomId = Math.floor(Math.random() * 9000) + 1000;
+            document.getElementById('enterUserId').value = randomId;
+        },
+
+        async addMultipleUsers() {
+            const promises = [];
+            for (let i = 0; i < 10; i++) {
+                const userId = Math.floor(Math.random() * 9000) + 1000;
+                promises.push(this.sendUserRequest(userId));
+            }
+
+            await Promise.all(promises);
+            setTimeout(() => this.updateStatus(), 500);
+        },
+
+        async sendUserRequest(userId) {
+            return fetch(this.ENDPOINTS.ENTER, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: `userId=${userId}`
+            });
+        },
+
+        async resetSystem() {
+            if (!confirm('시스템 정상화 (카운터를 0으로 리셋)하시겠습니까?')) return;
+
+            try {
+                const response = await fetch(this.ENDPOINTS.RESET, {method: 'POST'});
+                const data = await response.json();
+
+                alert(`시스템 정상화 완료\n이전 카운트: ${data.beforeCount}\n현재 카운트: ${data.afterCount}`);
+                this.updateStatus();
+            } catch (error) {
+                alert('시스템 리셋 실패: ' + error.message);
+            }
+        },
+
+        openApiStatus() {
+            window.open(this.ENDPOINTS.STATUS, '_blank');
+        },
+
+        cleanup() {
+            if (this.autoRefreshInterval) {
+                clearInterval(this.autoRefreshInterval);
+            }
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => QueueTest.init());
+    window.addEventListener('beforeunload', () => QueueTest.cleanup());
+</script>
+</body>
+</html>

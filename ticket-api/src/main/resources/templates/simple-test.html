@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>간단한 대기열 테스트</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>대기열 테스트 페이지</h1>
+    <p>현재 처리 중인 요청 수: <span th:text="${currentRequestCount}">0</span></p>
+    <p>과부하 상태: <span th:text="${isOverloaded}">false</span></p>
+    <p>대기열 크기: <span th:text="${queueSize}">0</span></p>
+    
+    <form th:action="@{/queue-test/enter}" method="post">
+        <label>사용자 ID: <input type="number" name="userId" value="1001" /></label>
+        <button type="submit">대기열 입장</button>
+    </form>
+</body>
+</html>
