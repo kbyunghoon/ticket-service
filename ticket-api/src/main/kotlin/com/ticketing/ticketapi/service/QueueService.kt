@@ -5,6 +5,7 @@ import com.ticketing.ticketapi.dto.QueueResponse
 import com.ticketing.ticketapi.dto.QueueSizeResponse
 import com.ticketing.ticketcore.service.QueueService as CoreQueueService
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicLong
 
 @Service
@@ -19,44 +20,42 @@ class QueueApiService(
 
         return QueueResponse(
             userId = actualUserId,
-            rank = rank,
-            queueSize = getQueueSize().queueSize,
-            message = if (rank != null) "대기열 진입 위치: ${rank}위" else "대기열 진입 실패"
+            position = rank ?: 0L,
+            estimatedWaitTime = if (rank != null) rank * 5 else 0L,
+            isActive = rank != null,
+            enteredAt = LocalDateTime.now().toString()
         )
     }
 
     fun getQueueStatus(userId: Long): QueueResponse {
         val rank = getRank(userId)
-        val queueSize = getQueueSize()
-
-        val message = if (rank != null) {
-            "대기열 ${rank}위입니다."
-        } else {
-            "사용자가 대기열에 존재하지 않음"
-        }
-
+        
         return QueueResponse(
             userId = userId,
-            rank = rank,
-            queueSize = queueSize.queueSize,
-            message = message
+            position = rank ?: 0L,
+            estimatedWaitTime = if (rank != null) rank * 5 else 0L,
+            isActive = rank != null,
+            enteredAt = LocalDateTime.now().toString()
         )
     }
 
     fun admitUsers(count: Long): AdmissionResponse {
         val admittedUsers = coreQueueService.admitUsers(count)
         val response = AdmissionResponse(
-            admittedUsers = admittedUsers,
-            admittedCount = admittedUsers.size,
-            remainingQueueSize = getQueueSize().queueSize,
+            admittedCount = admittedUsers.size.toLong(),
+            remainingQueueSize = getQueueSize().totalSize,
             message = "대기열 ${admittedUsers.size}명 허용"
         )
         return response
     }
 
     fun getQueueSize(): QueueSizeResponse {
-        val response = QueueSizeResponse(coreQueueService.getQueueSize(), "현재 대기열 인원 수")
-        return response
+        val queueSize = coreQueueService.getQueueSize()
+        return QueueSizeResponse(
+            totalSize = queueSize,
+            activeUsers = queueSize,
+            estimatedProcessingTime = queueSize * 5 // 5초 * 대기 인원
+        )
     }
 
     fun getRank(userId: Long): Long? {
