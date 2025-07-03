@@ -1,6 +1,6 @@
-package com.ticketing.ticketapi.config
+package com.ticketing.ticketcore.config
 
-import com.ticketing.ticketapi.dto.QueueRequestMessage
+import com.ticketing.ticketcommon.dto.QueueRequestMessage
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -79,7 +79,7 @@ class KafkaConfig {
             ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG to false,
             ConsumerConfig.MAX_POLL_RECORDS_CONFIG to 10,
             JsonDeserializer.TRUSTED_PACKAGES to "*",
-            JsonDeserializer.VALUE_DEFAULT_TYPE to "com.ticketing.ticketapi.dto.QueueRequestMessage"
+            JsonDeserializer.VALUE_DEFAULT_TYPE to "com.ticketing.ticketcommon.dto.QueueRequestMessage"
         )
 
         return DefaultKafkaConsumerFactory(props)

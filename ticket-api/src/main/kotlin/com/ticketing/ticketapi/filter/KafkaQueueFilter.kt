@@ -1,9 +1,9 @@
 package com.ticketing.ticketapi.filter
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.ticketing.ticketapi.dto.QueueRequestMessage
-import com.ticketing.ticketapi.service.KafkaProducerService
-import com.ticketing.ticketapi.service.RequestMonitorService
+import com.ticketing.ticketcommon.dto.QueueRequestMessage
+import com.ticketing.ticketcore.infra.kafka.KafkaProducerService
+import com.ticketing.ticketcore.service.RequestMonitorService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

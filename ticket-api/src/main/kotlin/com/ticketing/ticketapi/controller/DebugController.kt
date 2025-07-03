@@ -1,7 +1,7 @@
 package com.ticketing.ticketapi.controller
 
-import com.ticketing.ticketapi.dto.QueueRequestMessage
-import com.ticketing.ticketapi.service.KafkaProducerService
+import com.ticketing.ticketcommon.dto.QueueRequestMessage
+import com.ticketing.ticketcore.infra.kafka.KafkaProducerService
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping

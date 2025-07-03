@@ -1,6 +1,6 @@
 package com.ticketing.ticketapi.controller
 
-import com.ticketing.ticketapi.service.RequestMonitorService
+import com.ticketing.ticketcore.service.RequestMonitorService
 import com.ticketing.ticketcore.service.QueueService
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Controller

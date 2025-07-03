@@ -3,9 +3,9 @@ package com.ticketing.ticketapi.controller
 import com.ticketing.ticketapi.dto.AdmissionResponse
 import com.ticketing.ticketapi.dto.QueueResponse
 import com.ticketing.ticketapi.dto.QueueSizeResponse
-import com.ticketing.ticketapi.service.KafkaConsumerService
+import com.ticketing.ticketcore.infra.kafka.KafkaConsumerService
 import com.ticketing.ticketapi.service.QueueApiService
-import com.ticketing.ticketapi.service.RequestMonitorService
+import com.ticketing.ticketcore.service.RequestMonitorService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 

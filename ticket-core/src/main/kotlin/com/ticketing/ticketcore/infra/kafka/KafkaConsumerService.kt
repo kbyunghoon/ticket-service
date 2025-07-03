@@ -1,7 +1,8 @@
-package com.ticketing.ticketapi.service
+package com.ticketing.ticketcore.infra.kafka
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.ticketing.ticketapi.dto.QueueRequestMessage
+import com.ticketing.ticketcommon.dto.QueueRequestMessage
+import com.ticketing.ticketcore.service.RequestMonitorService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.*
 import org.springframework.kafka.annotation.KafkaListener

@@ -1,7 +1,8 @@
-package com.ticketing.ticketapi.service
+package com.ticketing.ticketcore.infra.kafka
 
-import com.ticketing.ticketapi.dto.QueueRequestMessage
-import com.ticketing.ticketapi.dto.QueueTokenResponse
+import com.ticketing.ticketcommon.dto.QueueRequestMessage
+import com.ticketing.ticketcommon.dto.QueueTokenResponse
+import com.ticketing.ticketcore.service.RequestMonitorService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.support.SendResult
@@ -17,6 +18,7 @@ class KafkaProducerService(
 
     @Value("\${app.queue.kafka.topic:ticket-requests}")
     private val topicName: String = "ticket-requests"
+    
     fun enqueueRequest(queueMessage: QueueRequestMessage): QueueTokenResponse {
         val token = generateToken()
         val future: CompletableFuture<SendResult<String, QueueRequestMessage>> =
