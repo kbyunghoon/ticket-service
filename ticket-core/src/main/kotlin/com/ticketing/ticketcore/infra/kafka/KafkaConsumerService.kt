@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.ticketing.ticketcommon.dto.QueueRequestMessage
 import com.ticketing.ticketcore.service.RequestMonitorService
 import com.ticketing.ticketcore.service.RequestProcessingService
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.*
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.messaging.handler.annotation.Header
 import org.springframework.messaging.handler.annotation.Payload
@@ -18,15 +16,6 @@ class KafkaConsumerService(
     private val requestProcessingService: RequestProcessingService,
     private val objectMapper: ObjectMapper
 ) {
-
-    @Value("\${server.port:8080}")
-    private val serverPort: Int = 8080
-
-    companion object {
-        private const val REQUEUE_TOKEN_HEADER = "X-Requeue-Token"
-        private const val CONTENT_TYPE_HEADER = "Content-Type"
-        private const val BASE_URL = "http://localhost"
-    }
 
     @KafkaListener(
         topics = ["\${app.queue.kafka.topic:ticket-requests}"],
@@ -126,34 +115,6 @@ class KafkaConsumerService(
             val remainingCount = requestMonitorService.decrementRequestCount()
             println("Kafka 재요청 완료 - Token: $token, 남은 요청 수: $remainingCount")
         }
-    }
-
-    private fun buildRequestUrl(message: QueueRequestMessage): String {
-        val baseUrl = "$BASE_URL:$serverPort${message.endpoint}"
-
-        return if (message.queryParams.isNotEmpty()) {
-            val queryString = message.queryParams.entries.joinToString("&") { "${it.key}=${it.value}" }
-            "$baseUrl?$queryString"
-        } else {
-            baseUrl
-        }
-    }
-
-    private fun buildRequestHeaders(message: QueueRequestMessage, token: String): HttpHeaders {
-        val headers = HttpHeaders()
-        message.headers.forEach { (key, value) ->
-            when (key.lowercase()) {
-                "host", "content-length", "connection" -> {}
-
-                else -> headers.add(key, value)
-            }
-        }
-        headers.add(REQUEUE_TOKEN_HEADER, token)
-        if (message.body != null && !headers.containsKey(CONTENT_TYPE_HEADER)) {
-            headers.add(CONTENT_TYPE_HEADER, MediaType.APPLICATION_JSON_VALUE)
-        }
-
-        return headers
     }
 
     fun getConsumerStatistics(): Map<String, Any> {
