@@ -100,6 +100,7 @@ class KafkaConsumerService(
 
         } catch (e: Exception) {
             println("재요청 실패 - 토큰: $token, Error: ${e.message}")
+            throw e
         } finally {
             val remainingCount = requestMonitorService.decrementRequestCount()
             println("Kafka 재요청 완료 - Token: $token, 남은 요청 수: $remainingCount")

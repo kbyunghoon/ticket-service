@@ -76,17 +76,25 @@ class KafkaQueueFilter(
 
         val currentRequestCount = requestMonitorService.incrementRequestCount()
         response.setHeader(REQUEST_ID_HEADER, requestId)
+        var isQueuedRequest = false
+        
         try {
             if (requestMonitorService.isOverloaded()) {
                 println("과부하 상태 - 요청을 큐에 추가: $requestId")
                 handleOverloadedRequest(request, response, requestId)
+                isQueuedRequest = true
             } else {
                 println("정상 요청 처리 - ID: $requestId, 현재 요청 수: $currentRequestCount")
                 filterChain.doFilter(request, response)
             }
         } finally {
-            val remainingCount = requestMonitorService.decrementRequestCount()
-            println("요청 완료 - ID: $requestId, 남은 요청 수: $remainingCount")
+            // 큐에 보낸 요청은 여기서 카운터 감소하지 않음 (Kafka에서 처리 완료 시 감소)
+            if (!isQueuedRequest) {
+                val remainingCount = requestMonitorService.decrementRequestCount()
+                println("요청 완료 - ID: $requestId, 남은 요청 수: $remainingCount")
+            } else {
+                println("큐 요청 - ID: $requestId, 카운터 유지 (Kafka 처리 시 감소 예정)")
+            }
         }
     }
 
