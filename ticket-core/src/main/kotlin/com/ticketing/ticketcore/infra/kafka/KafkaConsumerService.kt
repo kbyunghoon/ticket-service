@@ -45,23 +45,51 @@ class KafkaConsumerService(
     ) {
         val startTime = System.currentTimeMillis()
         var shouldCommit = false
+        var retryCount = 0
+        val maxRetries = 3
+
         try {
             println("[DEBUG] 메시지 수신 시간: ${LocalDateTime.now()}")
             println("[DEBUG] 스레드: ${Thread.currentThread().name}")
             println("[DEBUG] Token: $token, RequestID: ${message.requestId}")
             println("[DEBUG] canProcessRequest(): ${canProcessRequest()}")
 
-            println("[DEBUG] 재요청 실행 직전 시간: ${LocalDateTime.now()}")
-            executeRequeue(message, token)
-            shouldCommit = true
+            var lastException: Exception? = null
+            for (attempt in 1..maxRetries) {
+                try {
+                    println("[DEBUG] 재요청 실행 직전 시간: ${LocalDateTime.now()} (시도: $attempt/$maxRetries)")
+                    executeRequeue(message, token)
+                    shouldCommit = true
+                    break
+                } catch (e: Exception) {
+                    lastException = e
+                    retryCount = attempt
+                    println("재요청 실패 (시도 $attempt/$maxRetries) - 토큰: $token, Error: ${e.message}")
+
+                    if (attempt < maxRetries) {
+                        val delayMs = attempt * 1000L
+                        println("${delayMs}ms 후 재시도...")
+                        Thread.sleep(delayMs)
+                    }
+                }
+            }
+
+            if (!shouldCommit && lastException != null) {
+
+                sendToDeadLetterQueue(message, token, lastException, retryCount)
+                shouldCommit = true
+            }
 
             val processingTime = System.currentTimeMillis() - startTime
-            println("✅ 메시지 처리 완료 및 커밋 - 토큰: $token (처리시간: ${processingTime}ms)")
+            if (shouldCommit) {
+                println("✅ 메시지 처리 완료 및 커밋 - 토큰: $token (처리시간: ${processingTime}ms, 재시도: $retryCount)")
+            }
 
         } catch (e: Exception) {
             val processingTime = System.currentTimeMillis() - startTime
-            println("❌ 메시지 처리 실패 - Token: $token, Error: ${e.message} (처리시간: ${processingTime}ms)")
-            shouldCommit = true
+            println("❌ 메시지 처리 중 오류 발생 - 토큰: $token, 오류내용: ${e.message} (처리시간: ${processingTime}ms)")
+
+            shouldCommit = false
         } finally {
             if (shouldCommit) {
                 val commitStartTime = System.currentTimeMillis()
@@ -70,6 +98,8 @@ class KafkaConsumerService(
                 println("메시지 커밋 완료 - 토큰: $token (커밋시간: ${commitTime}ms)")
                 println("[DEBUG] 전체 완료 시간: ${LocalDateTime.now()}")
                 println("=".repeat(50))
+            } else {
+                println("메시지 커밋 안함 - 재처리 대기: $token")
             }
         }
     }
@@ -141,5 +171,32 @@ class KafkaConsumerService(
             "isOverloaded" to requestMonitorService.isOverloaded(),
             "timestamp" to System.currentTimeMillis()
         )
+    }
+
+    private fun sendToDeadLetterQueue(
+        message: QueueRequestMessage,
+        token: String,
+        lastException: Exception,
+        retryCount: Int
+    ) {
+        try {
+            println("DLQ로 메시지 전송 - 토큰: $token, 최종 실패 이유: ${lastException.message}")
+
+            val dlqMessage = mapOf(
+                "originalMessage" to message,
+                "token" to token,
+                "failureReason" to lastException.message,
+                "retryCount" to retryCount,
+                "failureTimestamp" to LocalDateTime.now(),
+                "lastException" to lastException.javaClass.simpleName
+            )
+
+            val dlqJson = objectMapper.writeValueAsString(dlqMessage)
+            println("DLQ 메시지 저장됨: $dlqJson")
+
+        } catch (e: Exception) {
+            println("DLQ 전송 실패 - 토큰: $token, Error: ${e.message}")
+
+        }
     }
 }
