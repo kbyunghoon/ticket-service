@@ -3,30 +3,24 @@ package com.ticketing.ticketcore.infra.kafka
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.ticketing.ticketcommon.dto.QueueRequestMessage
 import com.ticketing.ticketcore.service.RequestMonitorService
+import com.ticketing.ticketcore.service.RequestProcessingService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.*
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.messaging.handler.annotation.Header
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Service
-import org.springframework.web.client.RestTemplate
 import java.time.LocalDateTime
 
 @Service
 class KafkaConsumerService(
     private val requestMonitorService: RequestMonitorService,
+    private val requestProcessingService: RequestProcessingService,
     private val objectMapper: ObjectMapper
 ) {
 
     @Value("\${server.port:8080}")
     private val serverPort: Int = 8080
-
-    private val restTemplate = RestTemplate().apply {
-        val factory = org.springframework.http.client.SimpleClientHttpRequestFactory()
-        factory.setConnectTimeout(1000)
-        factory.setReadTimeout(3000)
-        requestFactory = factory
-    }
 
     companion object {
         private const val REQUEUE_TOKEN_HEADER = "X-Requeue-Token"
@@ -109,24 +103,21 @@ class KafkaConsumerService(
     }
 
     private fun executeRequeue(message: QueueRequestMessage, token: String) {
-        val url = buildRequestUrl(message)
-        val headers = buildRequestHeaders(message, token)
-        val httpMethod = HttpMethod.valueOf(message.method.uppercase())
-        val entity = HttpEntity(message.body, headers)
-
         try {
             val httpStartTime = System.currentTimeMillis()
-            println("재요청 실행 - ${message.method} $url")
-            val response: ResponseEntity<String> = restTemplate.exchange(
-                url,
-                httpMethod,
-                entity,
-                String::class.java
-            )
+            println("재요청 실행 (직접 호출) - ${message.method} ${message.endpoint}")
+
+            val result = requestProcessingService.processQueuedRequest(message, token)
 
             val httpEndTime = System.currentTimeMillis()
             val httpDuration = httpEndTime - httpStartTime
-            println("재요청 성공 - 토큰: $token, Status: ${response.statusCode}, HTTP시간: ${httpDuration}ms")
+
+            if (result.success) {
+                println("재요청 성공 (직접 호출) - 토큰: $token, Status: ${result.statusCode}, 처리시간: ${httpDuration}ms")
+            } else {
+                println("재요청 실패 (직접 호출) - 토큰: $token, Status: ${result.statusCode}, Error: ${result.errorMessage}")
+                throw RuntimeException("다이렉트 서비스 호출 실패: ${result.errorMessage}")
+            }
 
         } catch (e: Exception) {
             println("재요청 실패 - 토큰: $token, Error: ${e.message}")
