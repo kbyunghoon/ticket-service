@@ -1,6 +1,17 @@
 spring:
   application:
-    name: ticket-common
+    name: ticket-system
+  
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
 
   kafka:
     bootstrap-servers: localhost:9092
@@ -12,22 +23,49 @@ spring:
       batch-size: 16384
       linger-ms: 5
       buffer-memory: 33554432
+      properties:
+        spring.json.add.type.headers: false
     consumer:
-      group-id: ticket-service-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       auto-offset-reset: earliest
       enable-auto-commit: false
       properties:
-        spring.json.trusted.packages: "com.ticketing.ticketcommon.kafka.event"
+        spring.json.trusted.packages: "*"
+        spring.json.add.type.headers: false
+        max.poll.interval.ms: 30000
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
 
 app:
+  queue:
+    threshold:
+      max-concurrent-requests: 100
+      check-interval-ms: 1000
+    max-queue-size: 100000
+    admission-batch-size: 100
+    admission-interval-seconds: 10
+    token:
+      expiry-minutes: 30
+    kafka:
+      topic: ticket-requests
+      partitions: 3
+      replication-factor: 1
+    lock:
+      wait-time-seconds: 10
+      lease-time-seconds: 30
+
+  redis:
+    queue-key: "waiting:queue"
+    user-session-prefix: "user:session:"
+    ttl-seconds: 1800  # 30분
+
   kafka:
     topics:
       user-admitted: user-admitted-topic
       ticket-reserved: ticket-reserved-topic
       payment-completed: payment-completed-topic
-    enabled: false
+    enabled: true
 
 utils:
   encryption:
@@ -37,7 +75,17 @@ utils:
     timezone: Asia/Seoul
     format: yyyy-MM-dd HH:mm:ss
 
+redisson:
+  address: "redis://localhost:6379"
+  password: null
+  database: 0
+  timeout: 3000
+  connection-pool-size: 20
+  connection-minimum-idle-size: 5
+
 logging:
   level:
-    com.ticketing.ticketcommon: INFO
+    com.ticketing: INFO
     org.springframework.kafka: WARN
+    org.springframework.data.redis: WARN
+    org.redisson: WARN

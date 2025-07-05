@@ -2,4 +2,4 @@ spring:
   profiles:
     include: 
       - common
-      - api
+      - core

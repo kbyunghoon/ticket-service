@@ -1,42 +1,7 @@
 spring:
   application:
     name: ticket-core
-  
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      timeout: 2000ms
-      lettuce:
-        pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 0
-
-app:
-  queue:
-    max-queue-size: 100000
-    admission-batch-size: 100
-    admission-interval-seconds: 10
-    lock:
-      wait-time-seconds: 10
-      lease-time-seconds: 30
-
-  redis:
-    queue-key: "waiting:queue"
-    user-session-prefix: "user:session:"
-    ttl-seconds: 1800  # 30분
 
 logging:
   level:
     com.ticketing.ticketcore: INFO
-    org.springframework.data.redis: WARN
-    org.redisson: WARN
-
-redisson:
-  address: "redis://localhost:6379"
-  password: null
-  database: 0
-  timeout: 3000
-  connection-pool-size: 20
-  connection-minimum-idle-size: 5
