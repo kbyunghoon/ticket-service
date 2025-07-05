@@ -11,9 +11,14 @@ class DistributedLockService(
 ) {
     private val logger = LoggerFactory.getLogger(DistributedLockService::class.java)
 
-    /**
-     * 분산락
-     */
+    init {
+        try {
+            logger.info("Redisson 초기화 완료 - 설정: ${redissonClient.config}")
+        } catch (e: Exception) {
+            logger.error("Redisson 초기화 실패", e)
+        }
+    }
+
     fun <T> executeWithLock(
         lockKey: String,
         waitTimeSeconds: Long = 10,

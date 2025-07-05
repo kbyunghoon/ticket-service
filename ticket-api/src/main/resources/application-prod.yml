@@ -5,6 +5,21 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
 
+  redis:
+    redisson:
+      config: |
+        singleServerConfig:
+          address: "redis://${REDIS_HOST:redis-cluster}:${REDIS_PORT:6379}"
+          password: ${REDIS_PASSWORD:null}
+          database: 0
+          timeout: 5000
+          connectionPoolSize: 50
+          connectionMinimumIdleSize: 10
+          idleConnectionTimeout: 30000
+          connectTimeout: 15000
+          retryAttempts: 5
+          retryInterval: 2000
+
 app:
   api:
     rate-limit:
@@ -20,10 +35,6 @@ app:
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka-cluster:9092}
-
-redisson:
-  address: "redis://${REDIS_HOST:redis-cluster}:${REDIS_PORT:6379}"
-  password: ${REDIS_PASSWORD:}
 
 logging:
   level:
