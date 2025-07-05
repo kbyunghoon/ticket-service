@@ -11,8 +11,8 @@ class RequestMonitorService(
     private val redisTemplate: RedisTemplate<String, String>
 ) {
 
-    @Value("\${app.queue.threshold.max-concurrent-requests:10}")
-    private val maxConcurrentRequests: Int = 10
+    @Value("\${app.queue.threshold.max-concurrent-requests:100}")
+    private val maxConcurrentRequests: Int = 100
 
     private val overloadState = AtomicBoolean(false)
 
@@ -126,26 +126,15 @@ class RequestMonitorService(
         val currentCount = result[0]
         val isCurrentlyOverloaded = result[1] == 1L
         
+        println("🔍 [DEBUG] === 과부하 상태 확인 ===")
+        println("🔍 [DEBUG] currentCount: $currentCount")
+        println("🔍 [DEBUG] maxConcurrentRequests: $maxConcurrentRequests")
+        println("🔍 [DEBUG] isOverloaded: $isCurrentlyOverloaded")
+        println("🔍 [DEBUG] === 과부하 상태 확인 끝 ===")
+        
         updateOverloadState(isCurrentlyOverloaded, currentCount)
         
         return isCurrentlyOverloaded
-    }
-
-    fun isOverloadedIncludingQueue(queueSize: Long): Boolean {
-        val currentCount = getCurrentRequestCount()
-        val totalLoad = currentCount + queueSize
-        val threshold = 10L
-        val result = totalLoad >= threshold
-
-        println("🔍 [DEBUG] === isOverloadedIncludingQueue 시작 ===")
-        println("🔍 [DEBUG] currentCount: $currentCount")
-        println("🔍 [DEBUG] queueSize: $queueSize")
-        println("🔍 [DEBUG] totalLoad: $totalLoad")
-        println("🔍 [DEBUG] threshold: $threshold")
-        println("🔍 [DEBUG] result: $result")
-        println("🔍 [DEBUG] === isOverloadedIncludingQueue 끝 ===")
-
-        return result
     }
 
     private fun updateOverloadState(isCurrentlyOverloaded: Boolean, currentCount: Long) {

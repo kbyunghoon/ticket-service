@@ -4,15 +4,16 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
-class UserAdmissionService {
+class UserAdmissionService(
+    private val requestMonitorService: RequestMonitorService
+) {
     private val logger = LoggerFactory.getLogger(UserAdmissionService::class.java)
 
-    /**
-     * 사용자 입장 처리
-     * 대기열에서 빠진 사용자에 대한 후속 처리
-     */
     fun processUserAdmission(userId: Long) {
-        logger.info("사용자 $userId 입장 처리")
+        logger.info("사용자 $userId 입장 처리 시작")
+
+        val currentCount = requestMonitorService.incrementRequestCount()
+        logger.info("사용자 $userId 입장 - 현재 요청 수: $currentCount")
 
         // TODO: 여기에 입장 후속 처리 로직 구현
         // 1. 입장 토큰 발급
