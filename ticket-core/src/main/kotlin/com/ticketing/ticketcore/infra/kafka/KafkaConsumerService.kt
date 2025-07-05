@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.ticketing.ticketcommon.dto.QueueRequestMessage
 import com.ticketing.ticketcore.service.RequestMonitorService
 import com.ticketing.ticketcore.service.RequestProcessingService
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.kafka.annotation.KafkaListener
+import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.messaging.handler.annotation.Header
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Service
@@ -14,8 +17,13 @@ import java.time.LocalDateTime
 class KafkaConsumerService(
     private val requestMonitorService: RequestMonitorService,
     private val requestProcessingService: RequestProcessingService,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    @Qualifier("dlqKafkaTemplate")
+    private val kafkaTemplate: KafkaTemplate<String, Any>
 ) {
+
+    @Value("\${app.queue.kafka.dlq-topic:ticket-requests-dlq}")
+    private val dlqTopic: String = "ticket-requests-dlq"
 
     @KafkaListener(
         topics = ["\${app.queue.kafka.topic:ticket-requests}"],
@@ -58,19 +66,24 @@ class KafkaConsumerService(
             }
 
             if (!shouldCommit && lastException != null) {
+                val dlqSendSuccess = sendToDeadLetterQueueSafely(message, token, lastException, retryCount)
+                shouldCommit = dlqSendSuccess
 
-                sendToDeadLetterQueue(message, token, lastException, retryCount)
-                shouldCommit = true
+                if (dlqSendSuccess) {
+                    println("DLQ 전송 완료 - 원본 메시지 커밋 진행: $token")
+                } else {
+                    println("DLQ 전송 실패 - 원본 메시지 커밋 안함 (재처리 대기): $token")
+                }
             }
 
             val processingTime = System.currentTimeMillis() - startTime
             if (shouldCommit) {
-                println("✅ 메시지 처리 완료 및 커밋 - 토큰: $token (처리시간: ${processingTime}ms, 재시도: $retryCount)")
+                println("메시지 처리 완료 및 커밋 - 토큰: $token (처리시간: ${processingTime}ms, 재시도: $retryCount)")
             }
 
         } catch (e: Exception) {
             val processingTime = System.currentTimeMillis() - startTime
-            println("❌ 메시지 처리 중 오류 발생 - 토큰: $token, 오류내용: ${e.message} (처리시간: ${processingTime}ms)")
+            println("메시지 처리 중 오류 발생 - 토큰: $token, 오류내용: ${e.message} (처리시간: ${processingTime}ms)")
 
             shouldCommit = false
         } finally {
@@ -125,30 +138,84 @@ class KafkaConsumerService(
         )
     }
 
-    private fun sendToDeadLetterQueue(
+    private fun sendToDeadLetterQueueSafely(
         message: QueueRequestMessage,
         token: String,
         lastException: Exception,
         retryCount: Int
-    ) {
-        try {
-            println("DLQ로 메시지 전송 - 토큰: $token, 최종 실패 이유: ${lastException.message}")
+    ): Boolean {
+        return try {
+            println("DLQ로 메시지 동기 전송 시작 - 토큰: $token, 최종 실패 이유: ${lastException.message}")
 
-            val dlqMessage = mapOf(
-                "originalMessage" to message,
-                "token" to token,
-                "failureReason" to lastException.message,
-                "retryCount" to retryCount,
-                "failureTimestamp" to LocalDateTime.now(),
-                "lastException" to lastException.javaClass.simpleName
-            )
+            val dlqMessage = createDlqMessage(message, token, lastException, retryCount)
 
-            val dlqJson = objectMapper.writeValueAsString(dlqMessage)
-            println("DLQ 메시지 저장됨: $dlqJson")
+            val sendResult = kafkaTemplate.send(dlqTopic, token, dlqMessage).get()
+
+            val recordMetadata = sendResult.recordMetadata
+            println("DLQ 전송 성공 - 토큰: $token, 토픽: ${recordMetadata.topic()}, 파티션: ${recordMetadata.partition()}, 오프셋: ${recordMetadata.offset()}")
+
+            true
 
         } catch (e: Exception) {
-            println("DLQ 전송 실패 - 토큰: $token, Error: ${e.message}")
+            println("DLQ 전송 실패 - 토큰: $token, 에러: ${e.message}")
 
+            handleDlqSendFailure(message, token, lastException, retryCount, e)
+
+            false
+        }
+    }
+
+    private fun createDlqMessage(
+        originalMessage: QueueRequestMessage,
+        token: String,
+        lastException: Exception,
+        retryCount: Int
+    ): Map<String, Any> {
+        return mapOf(
+            "originalMessage" to originalMessage,
+            "failureInfo" to mapOf(
+                "token" to token,
+                "failureReason" to (lastException.message ?: "Unknown error"),
+                "exceptionType" to lastException.javaClass.simpleName,
+                "stackTrace" to lastException.stackTraceToString(),
+                "retryCount" to retryCount,
+                "maxRetries" to 3,
+                "failureTimestamp" to LocalDateTime.now(),
+                "processingAttempts" to retryCount
+            ),
+            "metadata" to mapOf(
+                "originalTopic" to "ticket-requests",
+                "dlqVersion" to "1.0",
+                "serviceName" to "ticket-queue-service",
+                "environment" to System.getProperty("spring.profiles.active", "default")
+            )
+        )
+    }
+
+    private fun handleDlqSendFailure(
+        originalMessage: QueueRequestMessage,
+        token: String,
+        originalException: Exception,
+        retryCount: Int,
+        dlqException: Throwable
+    ) {
+        try {
+
+            val fallbackMessage = mapOf(
+                "timestamp" to LocalDateTime.now(),
+                "token" to token,
+                "originalMessage" to originalMessage,
+                "originalError" to originalException.message,
+                "dlqError" to dlqException.message,
+                "retryCount" to retryCount
+            )
+
+            val fallbackJson = objectMapper.writeValueAsString(fallbackMessage)
+            println("DLQ 실패 - 로컬 백업 저장: $fallbackJson")
+            println("DLQ 전송 실패 알림 필요 - 토큰: $token")
+
+        } catch (e: Exception) {
+            println("DLQ 대안 처리도 실패 - 토큰: $token, 에러: ${e.message}")
         }
     }
 }

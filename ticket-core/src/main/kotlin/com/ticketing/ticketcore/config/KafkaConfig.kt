@@ -28,6 +28,9 @@ class KafkaConfig {
     @Value("\${app.queue.kafka.topic:ticket-requests}")
     private lateinit var topicName: String
 
+    @Value("\${app.queue.kafka.dlq-topic:ticket-requests-dlq}")
+    private lateinit var dlqTopicName: String
+
     @Value("\${app.queue.kafka.partitions:3}")
     private val partitions: Int = 3
 
@@ -52,6 +55,15 @@ class KafkaConfig {
     }
 
     @Bean
+    fun dlqTopic(): NewTopic {
+        return TopicBuilder.name(dlqTopicName)
+            .partitions(partitions)
+            .replicas(replicationFactor.toInt())
+            .compact()
+            .build()
+    }
+
+    @Bean
     fun producerFactory(): ProducerFactory<String, QueueRequestMessage> {
         val configProps = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
@@ -66,6 +78,20 @@ class KafkaConfig {
     @Bean
     fun kafkaTemplate(): KafkaTemplate<String, QueueRequestMessage> {
         return KafkaTemplate(producerFactory())
+    }
+
+    @Bean("dlqKafkaTemplate")
+    fun dlqKafkaTemplate(): KafkaTemplate<String, Any> {
+        val configProps = mapOf(
+            ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
+            ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
+            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to JsonSerializer::class.java,
+            ProducerConfig.ACKS_CONFIG to "all",
+            ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to true,
+            ProducerConfig.RETRIES_CONFIG to 3
+        )
+        val producerFactory = DefaultKafkaProducerFactory<String, Any>(configProps)
+        return KafkaTemplate(producerFactory)
     }
 
     @Bean

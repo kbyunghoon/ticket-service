@@ -19,10 +19,10 @@ class QueueTestController(
     fun queueTestPage(model: Model): String {
         val currentRequestCount = requestMonitorService.getCurrentRequestCount()
         val queueSize = queueService.getQueueSize()
-        val isOverloadedWithQueue = requestMonitorService.isOverloadedIncludingQueue(queueSize)
+        val isOverloaded = requestMonitorService.isOverloaded()
 
         model.addAttribute("currentRequestCount", currentRequestCount)
-        model.addAttribute("isOverloaded", isOverloadedWithQueue)
+        model.addAttribute("isOverloaded", isOverloaded)
         model.addAttribute("queueSize", queueSize)
 
         return "queue-test"
@@ -43,12 +43,10 @@ class QueueTestController(
         val currentRequestCount = requestMonitorService.getCurrentRequestCount()
         val queueSize = queueService.getQueueSize()
         val isOverloaded = requestMonitorService.isOverloaded()
-        val isOverloadedWithQueue = requestMonitorService.isOverloadedIncludingQueue(queueSize)
 
         return mapOf(
             "currentRequestCount" to currentRequestCount,
             "isOverloaded" to isOverloaded,
-            "isOverloadedIncludingQueue" to isOverloadedWithQueue,
             "queueSize" to queueSize,
             "message" to "API is working!",
             "debug" to mapOf(
@@ -64,20 +62,14 @@ class QueueTestController(
     fun debugOverload(): Map<String, Any> {
         val currentCount = requestMonitorService.getCurrentRequestCount()
         val queueSize = queueService.getQueueSize()
-        val threshold = 10
-        val totalLoad = currentCount + queueSize
-        val shouldBeOverloaded = totalLoad >= threshold
-        val actualResult = requestMonitorService.isOverloadedIncludingQueue(queueSize)
+        val isOverloaded = requestMonitorService.isOverloaded()
 
         return mapOf(
             "currentCount" to currentCount,
             "queueSize" to queueSize,
-            "threshold" to threshold,
-            "totalLoad" to totalLoad,
-            "shouldBeOverloaded" to shouldBeOverloaded,
-            "actualResult" to actualResult,
-            "calculation" to "$totalLoad >= $threshold = $shouldBeOverloaded",
-            "problem" to if (shouldBeOverloaded != actualResult) "MISMATCH" else "OK",
+            "isOverloaded" to isOverloaded,
+            "message" to "현재는 활성 요청 수만으로 과부하 판단",
+            "note" to "대기열 크기는 과부하 판단 포함 x",
             "debug" to mapOf(
                 "methodCalled" to "check console logs",
                 "timestamp" to System.currentTimeMillis()
@@ -203,7 +195,7 @@ class QueueTestController(
     }
 
     @PostMapping("/simulate-load")
-    fun ㅌsimulateLoad(
+    fun simulateLoad(
         @RequestParam(defaultValue = "50") requestCount: Int,
         redirectAttributes: RedirectAttributes
     ): String {

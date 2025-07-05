@@ -20,13 +20,13 @@ class SeatController(
         model.addAttribute("userId", userId ?: 0)
         return "seat"
     }
-    
+
     @PostMapping("/complete")
     fun completeProcessing(@RequestParam userId: Long, redirectAttributes: RedirectAttributes): String {
         return try {
             val currentCount = requestMonitorService.decrementRequestCount()
             println("[DEBUG] 사용자 $userId 처리 완료, 현재 요청 수: $currentCount")
-            
+
             redirectAttributes.addFlashAttribute("successMessage", "처리가 완료되었습니다.")
             "redirect:/entry"
         } catch (e: Exception) {
