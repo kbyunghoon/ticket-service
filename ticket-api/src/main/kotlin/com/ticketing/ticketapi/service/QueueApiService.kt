@@ -3,10 +3,10 @@ package com.ticketing.ticketapi.service
 import com.ticketing.ticketapi.dto.AdmissionResponse
 import com.ticketing.ticketapi.dto.QueueResponse
 import com.ticketing.ticketapi.dto.QueueSizeResponse
-import com.ticketing.ticketcore.service.QueueService as CoreQueueService
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicLong
+import com.ticketing.ticketcore.service.QueueService as CoreQueueService
 
 @Service
 class QueueApiService(
@@ -29,7 +29,7 @@ class QueueApiService(
 
     fun getQueueStatus(userId: Long): QueueResponse {
         val rank = getRank(userId)
-        
+
         return QueueResponse(
             userId = userId,
             position = rank ?: 0L,
@@ -44,7 +44,7 @@ class QueueApiService(
         val response = AdmissionResponse(
             admittedCount = admittedUsers.size.toLong(),
             remainingQueueSize = getQueueSize().totalSize,
-            message = "대기열 ${admittedUsers.size}명 허용"
+            message = "대기열에서 ${admittedUsers.size}명 추출, 비동기 입장 처리 시작"
         )
         return response
     }
@@ -54,7 +54,7 @@ class QueueApiService(
         return QueueSizeResponse(
             totalSize = queueSize,
             activeUsers = queueSize,
-            estimatedProcessingTime = queueSize * 5 // 5초 * 대기 인원
+            estimatedProcessingTime = queueSize * 5
         )
     }
 

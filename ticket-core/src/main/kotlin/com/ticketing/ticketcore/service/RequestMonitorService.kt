@@ -2,8 +2,8 @@ package com.ticketing.ticketcore.service
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.script.RedisScript
 import org.springframework.stereotype.Service
-import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
 
 @Service
@@ -20,7 +20,9 @@ class RequestMonitorService(
         private const val CURRENT_REQUESTS_KEY = "current_requests_count"
         private const val REQUEST_COUNTER_EXPIRE_SECONDS = 300L
 
-        private const val INCREMENT_AND_CHECK_SCRIPT = """
+        @Suppress("UNCHECKED_CAST")
+        private val INCREMENT_AND_CHECK_SCRIPT = RedisScript.of(
+            """
             local key = KEYS[1]
             local threshold = tonumber(ARGV[1])
             local expire_seconds = tonumber(ARGV[2])
@@ -31,9 +33,12 @@ class RequestMonitorService(
             local is_overloaded = current >= threshold
             
             return {current, is_overloaded and 1 or 0}
-        """
+            """.trimIndent(),
+            List::class.java
+        ) as RedisScript<List<Long>>
 
-        private const val DECREMENT_SCRIPT = """
+        private val DECREMENT_SCRIPT = RedisScript.of(
+            """
             local key = KEYS[1]
             local current = redis.call('GET', key)
             if current == false then
@@ -47,9 +52,13 @@ class RequestMonitorService(
             else
                 return redis.call('DECR', key)
             end
-        """
+            """.trimIndent(),
+            Long::class.java
+        )
 
-        private const val GET_AND_CHECK_SCRIPT = """
+        @Suppress("UNCHECKED_CAST")
+        private val GET_AND_CHECK_SCRIPT = RedisScript.of(
+            """
             local key = KEYS[1]
             local threshold = tonumber(ARGV[1])
             
@@ -63,46 +72,39 @@ class RequestMonitorService(
             local is_overloaded = current >= threshold
             
             return {current, is_overloaded and 1 or 0}
-        """
+            """.trimIndent(),
+            List::class.java
+        ) as RedisScript<List<Long>>
     }
 
     fun incrementRequestCount(): Long {
-        val result = redisTemplate.execute<List<Long>> { connection ->
-            val scriptResult = connection.eval(
-                INCREMENT_AND_CHECK_SCRIPT.toByteArray(),
-                org.springframework.data.redis.connection.ReturnType.MULTI,
-                1,
-                CURRENT_REQUESTS_KEY.toByteArray(),
-                maxConcurrentRequests.toString().toByteArray(),
-                REQUEST_COUNTER_EXPIRE_SECONDS.toString().toByteArray()
-            ) as List<Long>
-            scriptResult
-        } ?: listOf(0L, 0L)
-        
+        val result = redisTemplate.execute(
+            INCREMENT_AND_CHECK_SCRIPT,
+            listOf(CURRENT_REQUESTS_KEY),
+            maxConcurrentRequests.toString(),
+            REQUEST_COUNTER_EXPIRE_SECONDS.toString()
+        )
+
         val currentCount = result[0]
         val isOverloaded = result[1] == 1L
-        
+
         println("요청 카운트 증가: $currentCount (과부하: $isOverloaded)")
         updateOverloadState(isOverloaded, currentCount)
-        
+
         return currentCount
     }
 
     fun decrementRequestCount(): Long {
-        val currentCount = redisTemplate.execute<Long> { connection ->
-            connection.eval(
-                DECREMENT_SCRIPT.toByteArray(),
-                org.springframework.data.redis.connection.ReturnType.INTEGER,
-                1,
-                CURRENT_REQUESTS_KEY.toByteArray()
-            ) as Long
-        } ?: 0L
-        
+        val currentCount = redisTemplate.execute(
+            DECREMENT_SCRIPT,
+            listOf(CURRENT_REQUESTS_KEY)
+        )
+
         println("요청 카운트 감소: $currentCount")
 
         val isCurrentlyOverloaded = currentCount >= maxConcurrentRequests
         updateOverloadState(isCurrentlyOverloaded, currentCount)
-        
+
         return currentCount
     }
 
@@ -112,28 +114,23 @@ class RequestMonitorService(
     }
 
     fun isOverloaded(): Boolean {
-        val result = redisTemplate.execute<List<Long>> { connection ->
-            val scriptResult = connection.eval(
-                GET_AND_CHECK_SCRIPT.toByteArray(),
-                org.springframework.data.redis.connection.ReturnType.MULTI,
-                1,
-                CURRENT_REQUESTS_KEY.toByteArray(),
-                maxConcurrentRequests.toString().toByteArray()
-            ) as List<Long>
-            scriptResult
-        } ?: listOf(0L, 0L)
-        
+        val result = redisTemplate.execute(
+            GET_AND_CHECK_SCRIPT,
+            listOf(CURRENT_REQUESTS_KEY),
+            maxConcurrentRequests.toString()
+        )
+
         val currentCount = result[0]
         val isCurrentlyOverloaded = result[1] == 1L
-        
+
         println("🔍 [DEBUG] === 과부하 상태 확인 ===")
         println("🔍 [DEBUG] currentCount: $currentCount")
         println("🔍 [DEBUG] maxConcurrentRequests: $maxConcurrentRequests")
         println("🔍 [DEBUG] isOverloaded: $isCurrentlyOverloaded")
         println("🔍 [DEBUG] === 과부하 상태 확인 끝 ===")
-        
+
         updateOverloadState(isCurrentlyOverloaded, currentCount)
-        
+
         return isCurrentlyOverloaded
     }
 
