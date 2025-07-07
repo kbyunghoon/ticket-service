@@ -33,7 +33,8 @@ class KafkaQueueFilter(
             "/api/queue/kafka/status",
             "/api/queue/size",
             "/api/queue/kafka/test-request",
-            "/queue-test"
+            "/queue-test",
+            "/entry"
         )
     }
 
@@ -73,6 +74,22 @@ class KafkaQueueFilter(
         filterChain: FilterChain,
         requestId: String
     ) {
+        if (request.requestURI.startsWith("/seat")) {
+            val token = request.getParameter("token")
+            val userId = request.getParameter("userId")
+
+            if (token.isNullOrBlank()) {
+                println("토큰 없는 /seat 접근 - /entry로 리다이렉트: $requestId")
+                response.sendRedirect("/entry")
+                return
+            }
+            
+            if (!isValidAccessToken(token, userId)) {
+                println("무효한 토큰으로 /seat 접근 - /entry로 리다이렉트: $requestId, token: $token, userId: $userId")
+                response.sendRedirect("/entry")
+                return
+            }
+        }
 
         val currentRequestCount = requestMonitorService.incrementRequestCount()
         response.setHeader(REQUEST_ID_HEADER, requestId)
@@ -88,7 +105,6 @@ class KafkaQueueFilter(
                 filterChain.doFilter(request, response)
             }
         } finally {
-            // 큐에 보낸 요청은 여기서 카운터 감소하지 않음 (Kafka에서 처리 완료 시 감소)
             if (!isQueuedRequest) {
                 val remainingCount = requestMonitorService.decrementRequestCount()
                 println("요청 완료 - ID: $requestId, 남은 요청 수: $remainingCount")
@@ -164,15 +180,53 @@ class KafkaQueueFilter(
 
     private fun shouldSkipFilter(request: HttpServletRequest): Boolean {
         val path = request.requestURI
-        val shouldSkip = EXCLUDED_PATHS.any { path.startsWith(it) }
-
-        if (shouldSkip) {
-            println("필터 패스 - 경로: $path")
-        } else {
-            println("필터 적용 - 경로: $path")
+        
+        val isExcluded = EXCLUDED_PATHS.any { path.startsWith(it) }
+        if (isExcluded) {
+            println("필터 패스 - 제외 경로: $path")
+            return true
         }
 
-        return shouldSkip
+        if (path.startsWith("/seat")) {
+            val token = request.getParameter("token")
+            val userId = request.getParameter("userId")
+            
+            if (!token.isNullOrBlank() && isValidAccessToken(token, userId)) {
+                println("필터 패스 - 유효한 토큰: $path, token: $token, userId: $userId")
+                return true
+            } else {
+                println("필터 적용 - 토큰 없음/무효/userId 불일치: $path")
+                return false
+            }
+        }
+        
+        println("필터 적용 - 경로: $path")
+        return false
+    }
+    
+    private fun isValidAccessToken(token: String, userId: String? = null): Boolean {
+        if (!token.startsWith("ACCESS_TOKEN_")) {
+            return false
+        }
+
+        if (userId != null) {
+            try {
+                val tokenParts = token.split("_")
+                if (tokenParts.size >= 3) {
+                    val tokenUserId = tokenParts[2]
+                    if (tokenUserId != userId) {
+                        println("토큰 검증 실패 - userId 불일치: token=$tokenUserId, param=$userId")
+                        return false
+                    }
+                }
+            } catch (e: Exception) {
+                println("토큰 파싱 실패: $token")
+                return false
+            }
+        }
+
+        
+        return true
     }
 
     private fun writeErrorResponse(response: HttpServletResponse, message: String) {
