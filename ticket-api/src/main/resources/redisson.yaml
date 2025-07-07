@@ -1,0 +1,13 @@
+singleServerConfig:
+  # Redis 주소
+  address: "redis://127.0.0.1:6379"
+  # 연결 타임아웃 (밀리초)
+  connectTimeout: 10000
+  # 응답 타임아웃 (밀리초)
+  timeout: 5000
+  # 최소 유휴 연결 수
+  connectionMinimumIdleSize: 32
+  # 연결 풀 크기
+  connectionPoolSize: 128
+  # 구독 연결 풀 크기
+  subscriptionConnectionPoolSize: 64

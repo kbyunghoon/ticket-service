@@ -30,6 +30,14 @@ spring:
       retries: 3
       properties:
         spring.json.add.type.headers: false
+        # 버퍼 메모리 증가 (기본 32MB)
+        buffer.memory: 67108864 
+        # 전송 대기 시간 (기본 0ms)
+        linger.ms: 20
+        # 최대 블로킹 시간 (기본 60초)
+        max.block.ms: 30000
+        # 멱등성 Producer 활성화
+        enable.idempotence: true
     consumer:
       group-id: ticket-queue-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -50,7 +58,11 @@ spring:
     redis:
       host: localhost
       port: 6379
-      timeout: 2000ms
+      timeout: 5000ms
+
+# Redisson 설정 추가
+redisson:
+  file: classpath:redisson.yaml
 
 server:
   port: 8080
@@ -73,6 +85,7 @@ logging:
   level:
     com.ticketing.ticketapi: INFO
     org.springframework.web: INFO
+    org.redisson: INFO
 
 app:
   api:

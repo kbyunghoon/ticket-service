@@ -13,3 +13,20 @@ logging:
   level:
     com.ticketing: DEBUG
     org.springframework.web: DEBUG
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: ticket-queue-group-local
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+      properties:
+        max.poll.interval.ms: 300000
+        session.timeout.ms: 45000
+        heartbeat.interval.ms: 15000
