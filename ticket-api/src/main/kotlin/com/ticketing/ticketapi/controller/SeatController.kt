@@ -16,9 +16,43 @@ class SeatController(
 ) {
 
     @GetMapping
-    fun seatPage(@RequestParam(required = false) userId: Long?, model: Model): String {
-        model.addAttribute("userId", userId ?: 0)
+    fun seatPage(
+        @RequestParam(required = false) userId: Long?, 
+        @RequestParam(required = false) token: String?,
+        model: Model
+    ): String {
+        if (token.isNullOrBlank()) {
+            println("[DEBUG] 토큰 없이 /seat 접근 - /entry로 리다이렉트, userId: $userId")
+            return "redirect:/entry"
+        }
+        
+        if (userId == null || !isValidAccessToken(token, userId.toString())) {
+            println("[DEBUG] 무효한 토큰으로 /seat 접근 - /entry로 리다이렉트, userId: $userId, token: $token")
+            return "redirect:/entry"
+        }
+        
+        println("[DEBUG] 유효한 토큰으로 /seat 접근 성공, userId: $userId")
+        model.addAttribute("userId", userId)
+        model.addAttribute("token", token)
         return "seat"
+    }
+    
+    private fun isValidAccessToken(token: String, userId: String): Boolean {
+        if (!token.startsWith("ACCESS_TOKEN_")) {
+            return false
+        }
+
+        try {
+            val tokenParts = token.split("_")
+            if (tokenParts.size >= 3) {
+                val tokenUserId = tokenParts[2]
+                return tokenUserId == userId
+            }
+        } catch (e: Exception) {
+            return false
+        }
+        
+        return false
     }
 
     @PostMapping("/complete")

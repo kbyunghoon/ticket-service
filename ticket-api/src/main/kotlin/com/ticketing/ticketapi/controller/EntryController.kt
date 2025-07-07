@@ -15,7 +15,17 @@ class EntryController(
 ) {
 
     @GetMapping
-    fun entryPage(): String {
+    fun entryPage(model: Model): String {
+        val isOverloaded = requestMonitorService.isOverloaded()
+        val currentCount = requestMonitorService.getCurrentRequestCount()
+        
+        model.addAttribute("isOverloaded", isOverloaded)
+        model.addAttribute("currentCount", currentCount)
+        
+        if (!isOverloaded) {
+            model.addAttribute("directEntryMessage", "현재 대기 없이 바로 입장 가능합니다!")
+        }
+        
         return "entry"
     }
 
@@ -45,7 +55,10 @@ class EntryController(
                 val currentCount = requestMonitorService.incrementRequestCount()
                 println("[DEBUG] 사용자 $userId 바로 입장 허용, 현재 요청 수: $currentCount")
                 
+                val accessToken = "ACCESS_TOKEN_${userId}_${System.currentTimeMillis()}"
+                
                 redirectAttributes.addAttribute("userId", userId)
+                redirectAttributes.addAttribute("token", accessToken)
                 "redirect:/seat"
             }
         } catch (e: Exception) {
@@ -66,12 +79,18 @@ class EntryController(
     fun getUserRank(@PathVariable userId: Long): Map<String, Any?> {
         val rank = queueService.getQueueRank(userId)
         val queueSize = queueService.getQueueSize()
+        val isAdmitted = (rank == null)
+        
+        val accessToken = if (isAdmitted) {
+            "ACCESS_TOKEN_${userId}_${System.currentTimeMillis()}"
+        } else null
 
         return mapOf(
             "userId" to userId,
             "rank" to rank,
             "queueSize" to queueSize,
-            "isAdmitted" to (rank == null),
+            "isAdmitted" to isAdmitted,
+            "accessToken" to accessToken,
             "timestamp" to System.currentTimeMillis()
         )
     }
