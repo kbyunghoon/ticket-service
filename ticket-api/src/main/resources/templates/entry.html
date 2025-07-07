@@ -104,6 +104,16 @@
             border: 1px solid #f5c6cb;
         }
 
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+            font-weight: bold;
+        }
+
         .info-box {
             background: #e3f2fd;
             border: 1px solid #bbdefb;
@@ -129,6 +139,8 @@
     <p class="subtitle">티켓팅 입장 테스트</p>
 
     <div th:if="${errorMessage}" class="error-message" th:text="${errorMessage}"></div>
+    
+    <div th:if="${directEntryMessage}" class="success-message" th:text="${directEntryMessage}"></div>
 
     <form th:action="@{/entry/join}" method="post">
         <div class="form-group">
@@ -142,14 +154,19 @@
                    required>
         </div>
 
-        <button type="submit" class="btn">대기열 입장</button>
+        <button type="submit" class="btn" th:text="${isOverloaded ? '대기열 입장' : '바로 입장'}">대기열 입장</button>
     </form>
 
     <div class="info-box">
-        <ul>
+        <ul th:if="${isOverloaded}">
             <li>고유한 사용자 ID 입력</li>
             <li>과부하 활성화 시 대기열 입장</li>
             <li>순서가 되면 자동으로 좌석 선택 페이지로 이동</li>
+        </ul>
+        <ul th:unless="${isOverloaded}">
+            <li>고유한 사용자 ID 입력</li>
+            <li>현재 대기 없이 바로 입장 가능</li>
+            <li>입장 후 좌석 선택 페이지로 이동</li>
         </ul>
     </div>
 </div>

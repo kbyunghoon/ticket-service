@@ -219,7 +219,7 @@
 </div>
 
 <script th:inline="javascript">
-    const userId = 0;
+    const userId = /*[[${userId}]]*/ 0;
     let updateInterval;
     let redirectTimeout;
     let initialRank = null;
@@ -241,7 +241,8 @@
                     clearInterval(updateInterval);
 
                     redirectTimeout = setTimeout(() => {
-                        window.location.href = `/seat?userId=${userId}`;
+                        const token = data.accessToken || `TEMP_TOKEN_${userId}`;
+                        window.location.href = `/seat?userId=${userId}&token=${token}`;
                     }, 1000);
 
                 } else if (data.rank !== null) {
