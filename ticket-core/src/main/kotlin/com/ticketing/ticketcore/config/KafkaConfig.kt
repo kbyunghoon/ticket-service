@@ -69,7 +69,7 @@ class KafkaConfig {
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
             ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
             ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to JsonSerializer::class.java,
-            ProducerConfig.ACKS_CONFIG to "1",
+            ProducerConfig.ACKS_CONFIG to "all",
             ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to true
         )
         return DefaultKafkaProducerFactory(configProps)
